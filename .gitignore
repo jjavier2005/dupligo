@@ -1,0 +1,4 @@
+# Archivos que quiero que github no toque.
+*.exe
+dist/
+*.log
