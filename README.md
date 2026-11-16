@@ -1,6 +1,6 @@
 # DupliGo
 
-Desktop application developed in Go to detect files on Windows.
+Desktop application developed in Go to detect duplicated files on Windows.
 
 ## Objective
 
