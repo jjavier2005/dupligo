@@ -24,8 +24,6 @@ func GetRepeatedSizes(paths []string) (map[int64][]string, []int64, error) {
 		sizeMap[size] = append(sizeMap[size], path)
 	}
 
-	// Remove groups with only one file.
-	// Store the sizes of the remaining groups.
 	var repeatedSizes []int64
 
 	for size, files := range sizeMap {
