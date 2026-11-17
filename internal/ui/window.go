@@ -10,11 +10,12 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func NewMainWindow(app fyne.App, onScan func(string) ([][]string, error)) fyne.Window {
+func NewMainWindow(app fyne.App, onScan func(string) ([][]string, error), onTrash func([]string) (int, error)) fyne.Window {
 	window := app.NewWindow("DupliGo")
 
 	var selectedPath string
 	var checkboxes []*widget.Check
+	var filePaths []string
 
 	title := widget.NewLabelWithStyle(
 		"DupliGo - Duplicate File Finder",
@@ -28,8 +29,11 @@ func NewMainWindow(app fyne.App, onScan func(string) ([][]string, error)) fyne.W
 	statusLabel := widget.NewLabel("Selecciona una carpeta para comenzar.")
 	selectionLabel := widget.NewLabel("0 carpetas seleccionadas.")
 
-	resultsArea := container.NewVBox(
-		widget.NewLabel("No hay resultados todavía"))
+	resultsArea := container.NewVBox(widget.NewLabel("No hay resultados todavía"))
+
+	deleteButton := widget.NewButton("Eliminar seleccionado", nil)
+
+	deleteButton.Disable()
 
 	updateSelectionLabel := func() {
 		selectedCount := 0
@@ -43,6 +47,12 @@ func NewMainWindow(app fyne.App, onScan func(string) ([][]string, error)) fyne.W
 		selectionLabel.SetText(
 			fmt.Sprintf("%d files selected", selectedCount),
 		)
+
+		if selectedCount > 0 {
+			deleteButton.Enable()
+		} else {
+			deleteButton.Disable()
+		}
 	}
 
 	selectAllButton := widget.NewButton("Seleccionar todos", func() {
@@ -62,12 +72,11 @@ func NewMainWindow(app fyne.App, onScan func(string) ([][]string, error)) fyne.W
 	selectAllButton.Disable()
 	deselectAllButton.Disable()
 
-	deleteButton := widget.NewButton("Eliminar seleccionado", nil)
-
 	scanButton := widget.NewButton("Escanear", nil)
 
 	clearResults := func(message string) {
 		checkboxes = nil
+		filePaths = nil
 
 		resultsArea.Objects = []fyne.CanvasObject{
 			widget.NewLabel(message),
@@ -79,7 +88,7 @@ func NewMainWindow(app fyne.App, onScan func(string) ([][]string, error)) fyne.W
 		deselectAllButton.Disable()
 	}
 
-	selectButton := widget.NewButton("Choose folder", func() {
+	selectButton := widget.NewButton("Elige una carpeta", func() {
 		dialog.ShowFolderOpen(func(folder fyne.ListableURI, err error) {
 			if err != nil {
 				dialog.ShowError(err, window)
@@ -148,6 +157,7 @@ func NewMainWindow(app fyne.App, onScan func(string) ([][]string, error)) fyne.W
 						)
 
 						checkboxes = append(checkboxes, check)
+						filePaths = append(filePaths, path)
 
 						pathLabel := widget.NewLabel(path)
 						pathLabel.Wrapping = fyne.TextWrapWord
@@ -193,6 +203,75 @@ func NewMainWindow(app fyne.App, onScan func(string) ([][]string, error)) fyne.W
 				deselectAllButton.Enable()
 			})
 		}(selectedPath)
+	}
+
+	deleteButton.OnTapped = func() {
+		var selected []string
+
+		// Find selected files.
+		for i, check := range checkboxes {
+			if check.Checked {
+				selected = append(selected, filePaths[i])
+			}
+		}
+
+		if len(selected) == 0 {
+			return
+		}
+
+		dialog.ShowConfirm(
+			"Confirmar envío a la papelera",
+			fmt.Sprintf(
+				"Vas a enviar %d archivos a la papelera.\n\n"+
+					"Revisa cuidadosamente los archivos seleccionados.\n"+
+					"Aunque SHA-256 es extremadamente fiable, "+
+					"pueden existir errores o archivos modificados.\n\n"+
+					"Podrías estar seleccionando todas las copias.\n\n"+
+					"¿Quieres continuar?",
+				len(selected),
+			),
+			func(confirmed bool) {
+				if !confirmed {
+					return
+				}
+
+				deleteButton.Disable()
+				scanButton.Disable()
+				selectButton.Disable()
+				selectAllButton.Disable()
+				deselectAllButton.Disable()
+
+				for _, check := range checkboxes {
+					check.Disable()
+				}
+
+				go func() {
+					moved, err := onTrash(selected)
+
+					fyne.Do(func() {
+						clearResults("Vuelve a escanear para actualizar los resultados.")
+						scanButton.Enable()
+						selectButton.Enable()
+
+						if err != nil {
+							statusLabel.SetText(fmt.Sprintf(
+								"%d archivos movidos antes del error", moved,
+							))
+							dialog.ShowError(err, window)
+							return
+						}
+
+						statusLabel.SetText("Operación completada")
+						dialog.ShowInformation(
+							"Completado",
+							fmt.Sprintf("%d archivos enviados a la papelera.", moved),
+							window,
+						)
+					})
+				}()
+			},
+			window,
+		)
 	}
 
 	header := container.NewVBox(

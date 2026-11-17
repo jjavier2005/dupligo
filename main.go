@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2/app"
 
 	"github.com/jjavier2005/dupligo/internal/duplicates"
+	"github.com/jjavier2005/dupligo/internal/recycle"
 	"github.com/jjavier2005/dupligo/internal/scanner"
 	"github.com/jjavier2005/dupligo/internal/ui"
 )
@@ -40,6 +41,6 @@ func runScan(root string) ([][]string, error) {
 
 func main() {
 	application := app.NewWithID("com.jjavier2005.dupligo")
-	window := ui.NewMainWindow(application, runScan)
+	window := ui.NewMainWindow(application, runScan, recycle.Send)
 	window.ShowAndRun()
 }
