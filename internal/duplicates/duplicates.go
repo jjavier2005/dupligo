@@ -3,7 +3,6 @@ package duplicates
 import (
 	"fmt"
 	"os"
-	"sort"
 )
 
 func GetRepeatedSizes(paths []string) (map[int64][]string, []int64, error) {
@@ -36,11 +35,6 @@ func GetRepeatedSizes(paths []string) (map[int64][]string, []int64, error) {
 			repeatedSizes = append(repeatedSizes, size)
 		}
 	}
-
-	// Sort sizes in ascending order.
-	sort.Slice(repeatedSizes, func(i, j int) bool {
-		return repeatedSizes[i] < repeatedSizes[j]
-	})
 
 	return sizeMap, repeatedSizes, nil
 }
