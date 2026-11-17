@@ -39,7 +39,7 @@ func runScan(root string) ([][]string, error) {
 }
 
 func main() {
-	application := app.New()
-	window := ui.NewMainWindow(application)
+	application := app.NewWithID("com.jjavier2005.dupligo")
+	window := ui.NewMainWindow(application, runScan)
 	window.ShowAndRun()
 }
